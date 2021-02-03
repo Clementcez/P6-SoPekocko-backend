@@ -1,6 +1,7 @@
 const Sauce = require('../models/model');
 const fs = require('fs');
 const { error } = require('console');
+const { type } = require('os');
 
 exports.createModel = (req, res, next) =>{
     const sauceObject = JSON.parse(req.body.sauce);
@@ -30,7 +31,20 @@ exports.likeSauce = (req, res, next) => {
             .catch( error => res.status(400).json({ error }));
         }
         else if(req.body.like == 0){
+            const like = sauce.usersLiked.includes(req.body.userId) ? (sauce.likes -1) : (sauce.likes);
+            const dislike = sauce.usersDisliked.includes(req.body.userId) ? (sauce.dislikes -1) : (sauce.dislikes);
+            
+            sauce.usersLiked.splice(sauce.usersLiked.indexOf(req.body.userId),1);
+            sauce.usersDisliked.splice(sauce.usersDisliked.indexOf(req.body.userId),1);
 
+            Sauce.updateOne({ _id: req.params.id }, {
+                usersLiked: sauce.usersLiked,
+                usersDisliked: sauce.usersDisliked,
+                likes: like, 
+                dislikes: dislike
+            })
+            .then(() => res.status(200).json({ message: 'like retiré !'}))
+            .catch( error => res.status(400).json({ error }));
         }
         else if(req.body.like == -1){
             const arrayDisliked = sauce.usersDisliked;
@@ -41,7 +55,7 @@ exports.likeSauce = (req, res, next) => {
             .catch( error => res.status(400).json({ error }));
         }
     })
-    .catch( error => res.status(500).json({ error }));
+    .catch(error => res.status(500).json({error}));
 };
 
 exports.modifModel = (req, res , next) =>{
