@@ -59,8 +59,7 @@ exports.likeSauce = (req, res, next) => {
 };
 
 exports.modifModel = (req, res , next) =>{
-    req.file ? 
-    (
+    if(req.file !== undefined ){
         Sauce.findOne({ _id: req.params.id})
         .then(model => {
             const filename = model.imageUrl.split('/img/')[1];
@@ -69,7 +68,7 @@ exports.modifModel = (req, res , next) =>{
             });
         })
         .catch(error => res.status(500).json({error}))
-    ) : ("");
+    }
 
     const sauceObject = req.file ?
     { 
