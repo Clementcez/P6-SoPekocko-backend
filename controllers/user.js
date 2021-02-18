@@ -26,26 +26,31 @@ exports.signUp = (req, res, next) => {
 };
 
 exports.logIn = (req, res, next) => {
-    User.findOne({ email: req.body.email })
-    .then(user => {
-        if(!user){
-            return res.status(401).json({error: 'Utilisateur non trouvé !'})
-        }
-        bcrypt.compare(req.body.password, user.password)
-        .then(valid => {
-            if(!valid) {
-                return res.status(401).json({error: 'Mauvais mot de passe !'})
+    if( validator.isEmail (req.body.email) !== true ){
+        throw 'Email non valable !';
+    }
+    else{
+        User.findOne({ email: req.body.email })
+        .then(user => {
+            if(!user){
+                return res.status(401).json({error: 'Utilisateur non trouvé !'})
             }
-            res.status(200).json({
-                userId: user._id,
-                token: webToken.sign(
-                    { userId: user._id },
-                    'TOKEN_SECRET',
-                    { expiresIn: '24h' }
-                )
-            });
+            bcrypt.compare(req.body.password, user.password)
+            .then(valid => {
+                if(!valid) {
+                    return res.status(401).json({error: 'Mauvais mot de passe !'})
+                }
+                res.status(200).json({
+                    userId: user._id,
+                    token: webToken.sign(
+                        { userId: user._id },
+                        'TOKEN_SECRET',
+                        { expiresIn: '24h' }
+                    )
+                });
+            })
+            .catch(error => res.status(500).json({ error }));
         })
         .catch(error => res.status(500).json({ error }));
-    })
-    .catch(error => res.status(500).json({ error }));
+    }
 };
