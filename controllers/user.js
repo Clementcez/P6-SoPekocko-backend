@@ -5,7 +5,6 @@ const validator = require('validator');
 const CryptoJS = require("crypto-js");
 
 exports.signUp = (req, res, next) => {
-
     if( validator.isEmail (req.body.email) !== true ){
         throw 'Email non valable !';
     }
