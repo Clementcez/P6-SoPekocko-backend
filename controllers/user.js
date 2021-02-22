@@ -2,8 +2,10 @@ const User = require('../models/user');
 const bcrypt = require('bcrypt');
 const webToken = require('jsonwebtoken');
 const validator = require('validator');
+const CryptoJS = require("crypto-js");
 
 exports.signUp = (req, res, next) => {
+
     if( validator.isEmail (req.body.email) !== true ){
         throw 'Email non valable !';
     }
@@ -11,18 +13,45 @@ exports.signUp = (req, res, next) => {
         throw 'Mot de pass non valable !';
     }
     else{
-        bcrypt.hash(req.body.password, 10)
-        .then(hash => {
-            const user = new User ({
-                email : req.body.email,
-                password: hash
-            });
-            user.save()
-            .then(() => res.status(201).json({ message: 'Utilisateur créé!'}))
-            .catch( error => res.status(400).json({ error, message: 'email existant' }))
+        User.find()
+        .then(users => {
+            if(users.length === 0){
+                bcrypt.hash(req.body.password, 10)
+                .then(hash => {
+                    const emailCrypt = CryptoJS.AES.encrypt( req.body.email, 'secret key 123').toString();
+                    const user = new User ({
+                        email : emailCrypt,
+                        password: hash
+                    })
+                    user.save()
+                    .then(() => res.status(201).json({ message: 'Utilisateur créé!'}))
+                    .catch(error => res.status(500).json({ error }))
+                })
+                .catch(error => res.status(500).json({ error }))
+            }
+            else{
+                for (let user of users){
+                    let emailDecrypt = CryptoJS.AES.decrypt(user.email, 'secret key 123').toString(CryptoJS.enc.Utf8);
+                    if(emailDecrypt === req.body.email){
+                        throw 'Email déja utilisé !';
+                    }
+                }
+                bcrypt.hash(req.body.password, 10)
+                .then(hash => {
+                    const emailCrypt = CryptoJS.AES.encrypt( req.body.email, 'secret key 123').toString();
+                    const user = new User ({
+                        email : emailCrypt,
+                        password: hash
+                    })
+                    user.save()
+                    .then(() => res.status(201).json({ message: 'Utilisateur créé!'}))
+                    .catch(error => res.status(500).json({ error }))
+                })
+                .catch(error => res.status(500).json({ error }))
+            }
         })
-        .catch(error => res.status(500).json({ error }))
-    }
+        .catch(error => res.status(401).json({ error }))
+    }  
 };
 
 exports.logIn = (req, res, next) => {
@@ -30,26 +59,28 @@ exports.logIn = (req, res, next) => {
         throw 'Email non valable !';
     }
     else{
-        User.findOne({ email: req.body.email })
-        .then(user => {
-            if(!user){
-                return res.status(401).json({error: 'Utilisateur non trouvé !'})
-            }
-            bcrypt.compare(req.body.password, user.password)
-            .then(valid => {
-                if(!valid) {
-                    return res.status(401).json({error: 'Mauvais mot de passe !'})
+        User.find()
+        .then(users => {
+            for (let user of users){
+                let emailDecrypt = CryptoJS.AES.decrypt(user.email, 'secret key 123').toString(CryptoJS.enc.Utf8);
+                if(emailDecrypt === req.body.email){
+                    bcrypt.compare(req.body.password, user.password)
+                    .then(valid => {
+                        if(!valid) {
+                            return res.status(401).json({error: 'Mauvais mot de passe !'})
+                        }
+                        res.status(200).json({
+                            userId: user._id,
+                            token: webToken.sign(
+                                { userId: user._id },
+                                'TOKEN_SECRET',
+                                { expiresIn: '24h' }
+                            )
+                        });
+                    })
+                    .catch(error => res.status(500).json({ error }))               
                 }
-                res.status(200).json({
-                    userId: user._id,
-                    token: webToken.sign(
-                        { userId: user._id },
-                        'TOKEN_SECRET',
-                        { expiresIn: '24h' }
-                    )
-                });
-            })
-            .catch(error => res.status(500).json({ error }));
+            }
         })
         .catch(error => res.status(500).json({ error }));
     }

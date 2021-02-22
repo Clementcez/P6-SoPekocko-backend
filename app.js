@@ -4,7 +4,8 @@ const mongoose = require('mongoose');
 const path = require('path');
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
-
+const xss = require('xss-clean')
+const mongoSanitize = require('express-mongo-sanitize');
 
 const stuffRoutes = require('./routes/stuff');
 const userRoutes = require('./routes/user');
@@ -19,6 +20,12 @@ mongoose.connect(`mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@ma
 
 const app = express();
 
+app.use(bodyParser.urlencoded({extended: true}));
+
+app.use(mongoSanitize());
+
+app.use(xss())
+ 
 app.use(helmet());
 
 const apiLimiter = rateLimit({
